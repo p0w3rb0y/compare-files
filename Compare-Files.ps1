@@ -1,18 +1,18 @@
 function Compare-Files {
     <#
     .SYNOPSIS
-    This function will find duplicate files in a specified directory and will output to a log the results, including the hash for each file for analysis.
+    This function will find duplicate files in a specified directory and will output to the results to a log file, including the hash for each file for analysis.
     .DESCRIPTION
-    This function will find duplicate files in a specified directory and will output the results to a log that includes the hash for each file for analysis.
+    This function will find duplicate files in a specified directory and will output the results to a log file that includes the hash for each file for analysis.
     It will output how many files it has processed and the ammount of resources the computer is using during the task.
     .PARAMETER File_Extension
-    Include the file extensions you want to look for, defaults to "*"
+    Specify the file extensions you want to look for, defaults to "*" (comma separated)
     .PARAMETER Search_Location
     Specify the path for target
     .PARAMETER Search_Depth
-    Specify how deep you want to go in the recurse, defaults to 256
+    Specify how deep you want to go in the recurse, defaults to "*"
     .PARAMETER Log_Location
-    Specify the path for the log
+    Specify the path for the log output
     .PARAMETER Monitoring_Frequency
     Define in seconds the interval to show the monitoring output
     .NOTES
@@ -21,21 +21,21 @@ function Compare-Files {
     #>
     [cmdletbinding()]
     Param ( 
-        [parameter(Mandatory = $false, HelpMessage = "type the file extensions to search comma separated ")]
+        [parameter(Mandatory = $false, HelpMessage = "Type the file extensions to search for (comma separated) ")]
         [string[]]$File_Extension = "*",
         
         [parameter(Mandatory = $true, HelpMessage = "Target location for the search ex: C:\test ")]
         [string[]]$Search_Location,
         
-        [parameter(Mandatory = $false, HelpMessage = "numeric value that defines how many sub directories deep the search should include")]
+        [parameter(Mandatory = $false, HelpMessage = "Numeric value that defines how many sub directories deep the search should include")]
         [ValidateNotNullorEmpty()]
         [int]$Search_Depth = '',
 
-        [parameter(Mandatory = $true, HelpMessage = "Local File path for script output")]
+        [parameter(Mandatory = $true, HelpMessage = "File path for script output")]
         [ValidateNotNullorEmpty()]
         [string]$Log_Location,
 
-        [parameter(Mandatory = $false, HelpMessage = "number of seconds between monitoring update outputs")]
+        [parameter(Mandatory = $false, HelpMessage = "Number of seconds between monitoring update outputs")]
         [ValidateNotNullorEmpty()]
         [int]$Monitoring_Frequency = '10'
 
@@ -47,16 +47,18 @@ function Compare-Files {
         Remove-item $Log_Location -Force -ErrorAction SilentlyContinue
     }
     Write-Host 'Creating Log repository'
-    New-Item $Log_Location -Force
+    New-Item $Log_Location -Force 
 
     #Remove any jobs that might exist
     Get-job | Stop-Job -PassThru | Remove-Job
     #Creates a temp file for logs
     $tempfile = New-TemporaryFile 
-
+    
+    #Creates a job to look for duplicate files
     $job1 = Start-job -ScriptBlock {
         #Gets a list of files that are in the log path
         $Files_A = Get-ChildItem -Path $using:Search_Location -recurse -depth $using:Search_Depth -Include $using:File_Extension
+        #Looks for duplicates
         $Files_B = $Files_A | Group-Object Name | Where-Object { $_.count -gt 1 } | Sort-Object name, group
         
         [System.Collections.ArrayList]$hasharray = @()
